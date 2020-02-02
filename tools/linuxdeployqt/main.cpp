@@ -65,7 +65,6 @@ int main(int argc, char **argv)
     QStringList additionalExecutables;
     bool qmldirArgumentUsed = false;
     bool skipTranslations = false;
-    bool skipGlibcCheck = false;
     QStringList qmlDirs;
     QStringList qmlImportPaths;
     QString qmakeExecutable;
@@ -102,7 +101,6 @@ int main(int argc, char **argv)
             bundleAllButCoreLibs = true;
         } else if (argument == QByteArray("-unsupported-bundle-everything")) {
             LogDebug() << "Argument found:" << argument;
-            skipGlibcCheck = true;
             bundleEverything = true;
         } else if (argument == QByteArray("-no-strip")) {
             LogDebug() << "Argument found:" << argument;
@@ -154,9 +152,6 @@ int main(int argc, char **argv)
         } else if (argument == QByteArray("-no-translations")) {
             LogDebug() << "Argument found:" << argument;
             skipTranslations = true;
-        } else if (argument == QByteArray("-unsupported-allow-new-glibc")) {
-            LogDebug() << "Argument found:" << argument;
-            skipGlibcCheck = true;
         } else if (argument.startsWith("-extra-plugins=")) {
             LogDebug() << "Argument found:" << argument;
             int index = argument.indexOf("=");
@@ -178,28 +173,6 @@ int main(int argc, char **argv)
             return 1;
         } else {
             LogError() << "Unknown argument:" << argument << "\n";
-            return 1;
-        }
-    }
-    
-    // We need to catch those errors at the source of the problem
-    // https://github.com/AppImage/appimage.github.io/search?q=GLIBC&unscoped_q=GLIBC&type=Issues
-    const char *glcv = gnu_get_libc_version ();
-    if(skipGlibcCheck) {
-        qInfo() << "WARNING: Not checking glibc on the host system.";
-        qInfo() << "         The resulting AppDir or AppImage may not run on older systems.";
-        qInfo() << "         This mode is unsupported and discouraged.";
-        qInfo() << "         For more information, please see";
-        qInfo() << "         https://github.com/probonopd/linuxdeployqt/issues/340";
-     } else {
-        // openSUSE Leap 15.0 uses glibc 2.26 and is used on OBS
-        if (strverscmp (glcv, "2.27") >= 0) {
-            qInfo() << "ERROR: The host system is too new.";
-            qInfo() << "Please run on a system with a glibc version no newer than what comes with the oldest";
-            qInfo() << "currently still-supported mainstream distribution (xenial), which is glibc 2.23.";
-            qInfo() << "This is so that the resulting bundle will work on most still-supported Linux distributions.";
-            qInfo() << "For more information, please see";
-            qInfo() << "https://github.com/probonopd/linuxdeployqt/issues/340";
             return 1;
         }
     }
@@ -455,14 +428,6 @@ int main(int argc, char **argv)
                     continue;
                 }
             }
-        }
-
-        /* Additional check to make sure that the undocumented, unsupported and not recommended
-         * -unsupported-allow-new-glibc option is not abused to create results that are broken; see
-         * https://github.com/probonopd/linuxdeployqt/issues/340 for more information
-         * TODO: Add funtionality that would automatically bundle glibc fully and correctly in this case */
-        if(skipGlibcCheck == true){
-            if(QFileInfo(appDirPath + "/usr/share/doc/libc6/copyright").exists() == false) exit(1);
         }
 
         /* Copy in place */
